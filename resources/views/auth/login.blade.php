@@ -12,7 +12,7 @@
                 <i class="bi bi-building" style="font-size: 40px; color: white;"></i>
             </div>
             <h1 style="font-size: 28px; font-weight: 700; color: #1e3a8a; margin-bottom: 8px;">Welcome Back</h1>
-            <p style="color: #6b7280; font-size: 14px;">Sign in to access government services</p>
+            <p style="color: #6b7280; font-size: 14px;">Sign in to access PG(hostel) services</p>
         </div>
 
         {{-- Login Form --}}

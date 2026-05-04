@@ -275,7 +275,6 @@
             <form id="addPaymentForm">
                 @csrf
                 <div class="modal-body">
-                    <!-- Step 1: Select Hostel -->
                     <div class="mb-3">
                         <label class="form-label">Select Hostel <span class="text-danger">*</span></label>
                         <select name="hostel_id" id="add_hostel_id" class="form-select" required>
@@ -286,7 +285,6 @@
                         </select>
                     </div>
 
-                    <!-- Step 2: Search/Filters -->
                     <div id="memberFilters" style="display: none;">
                         <div class="row mb-3">
                             <div class="col-md-8">
@@ -303,7 +301,6 @@
                         </div>
                     </div>
 
-                    <!-- Step 3: Select Member -->
                     <div class="mb-3">
                         <label class="form-label">Select Member <span class="text-danger">*</span></label>
                         <select name="member_id" id="add_member_id" class="form-select" required disabled>
@@ -449,6 +446,13 @@
 </div>
 
 <script>
+// CSRF Token setup
+$.ajaxSetup({
+    headers: {
+        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') || '{{ csrf_token() }}'
+    }
+});
+
 // ==================== ADD PAYMENT - DYNAMIC LOADING WITH SEARCH ====================
 let currentMonthlyRent = 0;
 let currentTotalPaid = 0;
@@ -478,14 +482,19 @@ $('#add_hostel_id').on('change', function() {
 function loadMembers(hostelId, searchTerm = '', roomNumber = '') {
     const memberSelect = $('#add_member_id');
 
+    let url = "/admin/payments/members/" + hostelId;
+    let params = [];
+    if (searchTerm) params.push('search=' + encodeURIComponent(searchTerm));
+    if (roomNumber) params.push('room_number=' + encodeURIComponent(roomNumber));
+    if (params.length) url += '?' + params.join('&');
+
     $.ajax({
-        url: "{{ url('admin/payments/members') }}/" + hostelId,
+        url: url,
         method: "GET",
-        data: { search: searchTerm, room_number: roomNumber },
         success: function(response) {
             memberSelect.html('<option value="">Select Member</option>');
 
-            if (response.data && response.data.length) {
+            if (response.success && response.data && response.data.length) {
                 currentMembersData = response.data;
 
                 // Populate room filter dropdown
@@ -538,9 +547,11 @@ function loadMembers(hostelId, searchTerm = '', roomNumber = '') {
                 $('#memberCountInfo').html('<i class="bi bi-exclamation-circle"></i> No members found');
             }
         },
-        error: function() {
+        error: function(xhr) {
+            console.error('AJAX Error:', xhr);
             memberSelect.html('<option value="">Error loading members</option>');
             $('#memberCountInfo').html('<i class="bi bi-exclamation-triangle"></i> Error loading members');
+            showToast('Failed to load members: ' + (xhr.responseJSON?.message || 'Server error'), 'error');
         }
     });
 }
@@ -630,7 +641,7 @@ $('#add_member_id').on('change', function() {
 
         // Check if payment already exists
         $.ajax({
-            url: "{{ url('admin/payments/check') }}/" + memberId + "/" + month,
+            url: "/admin/payments/check/" + memberId + "/" + month,
             method: "GET",
             success: function(response) {
                 if (response.exists) {
@@ -644,6 +655,9 @@ $('#add_member_id').on('change', function() {
                     $('#paymentExistsWarning').hide();
                     $('#addPaymentForm button[type="submit"]').prop('disabled', false);
                 }
+            },
+            error: function(xhr) {
+                console.error('Check payment error:', xhr);
             }
         });
     } else {
@@ -688,7 +702,7 @@ $('#add_month').on('change', function() {
 
     if (memberId) {
         $.ajax({
-            url: "{{ url('admin/payments/check') }}/" + memberId + "/" + month,
+            url: "/admin/payments/check/" + memberId + "/" + month,
             method: "GET",
             success: function(response) {
                 if (response.exists) {
@@ -702,6 +716,9 @@ $('#add_month').on('change', function() {
                     $('#paymentExistsWarning').hide();
                     $('#addPaymentForm button[type="submit"]').prop('disabled', false);
                 }
+            },
+            error: function(xhr) {
+                console.error('Check payment error:', xhr);
             }
         });
     }
@@ -721,7 +738,7 @@ $('#addPaymentForm').on('submit', function(e) {
     formData += '&paid_date=' + (status === 'paid' ? new Date().toISOString().split('T')[0] : '');
 
     $.ajax({
-        url: "{{ route('admin.payments.store') }}",
+        url: "/admin/payments/store",
         method: "POST",
         data: formData,
         success: function(response) {
@@ -749,9 +766,7 @@ $('#addPaymentForm').on('submit', function(e) {
 
 // Record payment from pending dues table
 $('.record-payment-btn').on('click', function() {
-    const memberId = $(this).data('member-id');
     const memberName = $(this).data('member-name');
-
     $('#addPaymentModal').modal('show');
     showToast('Please select the hostel and find the member: ' + memberName, 'info');
 });
@@ -769,7 +784,7 @@ $('.view-payment').on('click', function() {
     $('#viewPaymentModal').modal('show');
 
     $.ajax({
-        url: "{{ url('admin/payments') }}/" + paymentId,
+        url: "/admin/payments/" + paymentId,
         method: "GET",
         success: function(response) {
             if (response.success) {
@@ -786,8 +801,8 @@ $('.view-payment').on('click', function() {
                             <td colspan="3">
                                 <strong class="text-danger">₹${p.previous_dues_total.toLocaleString('en-IN')}</strong>
                                 ${monthsList ? `<ul class="mb-0 mt-1">${monthsList}</ul>` : ''}
-                            </td>
-                        </tr>
+                             </td>
+                         </tr>
                     `;
                 }
 
@@ -797,7 +812,7 @@ $('.view-payment').on('click', function() {
                         <tr class="table-warning">
                             <th>Current Month Pending</th>
                             <td colspan="3" class="text-danger fw-bold">₹${p.pending_amount.toLocaleString('en-IN')}</td>
-                        </tr>
+                         </tr>
                     `;
                 }
 
@@ -845,7 +860,7 @@ $('.edit-payment').on('click', function() {
     showLoader();
 
     $.ajax({
-        url: "{{ url('admin/payments') }}/" + paymentId + "/edit",
+        url: "/admin/payments/" + paymentId + "/edit",
         method: "GET",
         success: function(response) {
             hideLoader();
@@ -906,7 +921,7 @@ $('#editPaymentForm').on('submit', function(e) {
     formData += '&status=' + status;
 
     $.ajax({
-        url: "{{ url('admin/payments') }}/" + id,
+        url: "/admin/payments/" + id,
         method: "POST",
         data: formData,
         success: function(response) {
@@ -938,9 +953,9 @@ $('#confirmDeleteBtn').on('click', function() {
     showLoader();
 
     $.ajax({
-        url: "{{ url('admin/payments') }}/" + deletePaymentId,
+        url: "/admin/payments/" + deletePaymentId,
         method: "DELETE",
-        data: { _token: "{{ csrf_token() }}" },
+        data: { _token: '{{ csrf_token() }}' },
         success: function(response) {
             hideLoader();
             showToast(response.message, 'success');

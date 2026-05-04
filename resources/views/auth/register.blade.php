@@ -7,7 +7,7 @@
 <div class="container" style="padding: 20px 0 40px;">
     <div style="text-align: center; margin-bottom: 24px;">
         <h2 style="font-weight: 700; color: #1e3a8a;">Create Account</h2>
-        <p style="color: #6b7280; font-size: 14px;">Register for government services</p>
+        <p style="color: #6b7280; font-size: 14px;">Register for PG(hostel) services</p>
     </div>
 
     <div class="gov-card" style="padding: 24px;">
